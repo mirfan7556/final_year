@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Epilepsy Monitoring Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ... (Your custom styles for font, scrollbar, and pulse animation remain here) ... */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2d3748; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6a768d; }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .heart-pulse { animation: pulse 1.5s infinite; }
+        .history-modal { max-width: 90%; width: 900px; max-height: 90vh; }
+        /* Style for the major, flashing alert box */
+        @keyframes flash-red {
+            0%, 100% { background-color: #7f1d1d; border-color: #ef4444; } /* Red 900 */
+            50% { background-color: #dc2626; border-color: #fca5a5; } /* Red 600 */
+        }
+        .seizure-alert {
+            animation: flash-red 0.5s infinite alternate;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+    <div class="flex flex-col md:flex-row h-screen overflow-hidden">
+
+        <aside class="w-full md:w-64 bg-gray-800 p-6 flex flex-col items-center md:items-start border-b md:border-r border-gray-700">
+             <div class="mb-8 mt-2 text-2xl font-bold text-indigo-400">AI Fits-Care</div>
+             <nav class="w-full">
+                <ul class="space-y-4">
+                    <li><a href="#" class="flex items-center space-x-3 p-3 rounded-lg bg-gray-700 transition-colors"><svg class="w-6 h-6 text-indigo-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path></svg><span class="text-lg">Dashboard</span></a></li>
+                    <li><a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700 transition-colors"><svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg><span class="text-lg">Patients</span></a></li>
+                    <li><a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-700 transition-colors"><svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 5a2 2 0 012-2h2.5a2.5 2.5 0 012.5 2.5V7a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h2V5a1 1 0 00-1-1H7a1 1 0 000 2h.5V5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1.5H14a1 1 0 001-1V9a1 1 0 00-1-1H6a1 1 0 00-1 1v4a1 1 0 001 1h8a1 1 0 001-1V9a1 1 0 00-1-1h-2a2 2 0 00-2-2V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v1.5H4z" clip-rule="evenodd"></path></svg><span class="text-lg">Reports</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-8">
+            <h1 class="text-3xl font-bold mb-8">AI Seizure Monitoring Dashboard</h1>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-400">Current Patient</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <span class="text-gray-400 font-medium">Last Location:</span>
+                            <span id="patient-location" class="ml-2 text-white">Office/Home</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-gray-400 font-medium">Last Log Time:</span>
+                            <span id="patient-last-log" class="ml-2 text-white">N/A</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="text-gray-400 font-medium">AI Status:</span>
+                            <span id="patient-diagnosis" class="ml-2 text-white font-bold">ACTIVE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg col-span-1 md:col-span-2">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-400">Live Vitals & MPU Data</h2>
+                    <div class="h-64 relative">
+                        <div class="flex justify-around items-center h-full">
+                            <div class="text-center">
+                                <span class="text-gray-500 text-lg">Pulse Rate</span>
+                                <div id="pulse-display" class="text-4xl font-bold text-green-400 heart-pulse">75 bpm</div>
+                                <span class="text-gray-500 text-sm">Target: 60-100</span>
+                            </div>
+                            <div class="text-center">
+                                <span class="text-gray-500 text-lg">Avg Accel RMS</span>
+                                <div id="accel-display" class="text-4xl font-bold text-yellow-400">0.35 g</div>
+                                <span class="text-gray-500 text-sm">Motion Intensity</span>
+                            </div>
+                             <div class="text-center">
+                                <span class="text-gray-500 text-lg">Pulse STD</span>
+                                <div id="pulse-std" class="text-4xl font-bold text-blue-400">1.2</div>
+                                <span class="text-gray-500 text-sm">Variability</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg row-span-2">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-400">AI Prediction & Action</h2>
+                    <div id="mpu-status" class="space-y-4 overflow-y-auto max-h-96">
+                        
+                        <div id="status-card" class="bg-gray-700 border-l-4 border-green-500 p-4 rounded-lg transition-colors duration-500">
+                            <div class="text-sm text-gray-300">STATUS:</div>
+                            <div id="prediction-status" class="text-2xl font-bold text-green-400">NORMAL</div>
+                            <div class="mt-2 text-sm text-gray-400">Severity Score: <span id="severity-score" class="font-bold">0</span></div>
+                        </div>
+
+                        <div class="bg-gray-700 p-4 rounded-lg border-l-4 border-indigo-400">
+                             <div class="text-sm text-indigo-400 font-semibold">AI Recommendation:</div>
+                             <div id="recommendation-text" class="text-white text-md mt-1">System initializing. Awaiting first data prediction.</div>
+                        </div>
+                        
+                        <div class="bg-gray-700 p-4 rounded-lg">
+                            <div class="text-sm text-gray-400">Raw Vitals Data Placeholder:</div>
+                            <div id="raw-pulse-placeholder" class="text-sm text-white">X: -- Y: -- Z: --</div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-400">Patient Location (GPS)</h2>
+                    <div id="location-data" class="space-y-2">
+                        <p class="text-sm text-gray-400">Lat: <span id="lat-display" class="text-white">40.7128</span></p>
+                        <p class="text-sm text-gray-400">Lon: <span id="lon-display" class="text-white">-74.0060</span></p>
+                    </div>
+                    <div class="h-32 bg-gray-700 mt-4 rounded-lg flex items-center justify-center text-gray-500 text-xs">
+                        <span id="map-placeholder">MAP LOADING...</span>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-400">Caregiver Actions</h2>
+                    <div class="space-y-4">
+                        <button onclick="showAlert('Emergency help has been requested.')" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg shadow-md transition-colors">
+                            Request Emergency Help
+                        </button>
+                        <button onclick="showFullHistory()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg shadow-md transition-colors">
+                            View Full History Log
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+    </div>
+
+    <div id="customAlert" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <div id="alertMessage" class="text-center text-lg font-medium text-white mb-4"></div>
+            <button onclick="hideAlert()" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 rounded-lg transition-colors">OK</button>
+        </div>
+    </div>
+    
+    <div id="historyModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl history-modal flex flex-col">
+            <h2 class="text-2xl font-bold mb-4 text-indigo-400">Full Patient Log History</h2>
+            <p class="text-gray-400 mb-4">Chronological log of AI predictions and sensor features.</p>
+            <div id="historyTableContainer" class="flex-1 overflow-y-auto custom-scrollbar">
+                <p id="historyLoading" class="text-center text-lg text-yellow-400 mt-10">Loading history data...</p>
+            </div>
+            <button onclick="hideHistoryModal()" class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition-colors">Close</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- CONFIGURATION ---
+        // CRITICAL: Ensure your FastAPI server is running at this URL!
+        const API_BASE_URL = "http://127.0.0.1:8000"; 
+        // Use the correct prediction endpoint
+        const PREDICTION_ENDPOINT = "/api/v1/seizure-status"; 
+        // NOTE: We don't have a history endpoint yet, but we'll use a placeholder for now
+        const HISTORY_ENDPOINT = "/api/v1/full_history"; 
+        const FETCH_INTERVAL = 3000; // Fetch live data every 3 seconds
+
+        window.onload = function() {
+            setInterval(fetchLatestData, FETCH_INTERVAL);
+            fetchLatestData(); // Initial immediate fetch
+        };
+
+        // --- MODAL FUNCTIONS (No changes needed) ---
+        function showAlert(message) {
+            const customAlert = document.getElementById('customAlert');
+            const alertMessage = document.getElementById('alertMessage');
+            alertMessage.textContent = message;
+            customAlert.classList.remove('hidden');
+        }
+
+        function hideAlert() {
+            document.getElementById('customAlert').classList.add('hidden');
+        }
+
+        function showHistoryModal() {
+            document.getElementById('historyModal').classList.remove('hidden');
+        }
+
+        function hideHistoryModal() {
+            document.getElementById('historyModal').classList.add('hidden');
+        }
+
+        // --- API FETCH LOGIC ---
+        
+        // This function now specifically fetches the Gemini Prediction
+        async function fetchLatestData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}${PREDICTION_ENDPOINT}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                // Data is the structured SeizurePrediction JSON from FastAPI/Gemini
+                const data = await response.json();
+                updateDashboard(data);
+                
+            } catch (error) {
+                console.error("Error fetching live prediction data from API:", error);
+                // Update status to show API failure
+                const statusDiv = document.getElementById('prediction-status');
+                statusDiv.textContent = "API OFFLINE";
+                document.getElementById('status-card').className = 'bg-gray-900 border-l-4 border-yellow-500 p-4 rounded-lg seizure-alert';
+            }
+        }
+
+        /**
+         * The core function to update the dashboard based on the Gemini prediction.
+         * @param {Object} data - The SeizurePrediction object {seizure_detected, severity_score, recommendation}
+         */
+        function updateDashboard(data) {
+            const statusDiv = document.getElementById('prediction-status');
+            const statusCard = document.getElementById('status-card');
+            const severityScoreDiv = document.getElementById('severity-score');
+            const recommendationText = document.getElementById('recommendation-text');
+            
+            const detected = data.seizure_detected;
+            const severity = data.severity_score;
+            const recommendation = data.recommendation;
+            
+            // --- 1. Update Prediction Display ---
+            statusDiv.textContent = detected ? "SEIZURE DETECTED" : "NORMAL";
+            severityScoreDiv.textContent = severity;
+            recommendationText.textContent = recommendation;
+
+            // --- 2. Styling and Alert Logic ---
+            statusCard.className = 'p-4 rounded-lg transition-colors duration-500 border-l-4';
+            statusCard.classList.remove('seizure-alert'); // Remove flashing by default
+
+            if (detected && severity >= 3) {
+                // Critical Alert: Flash red for Severity 3+
+                statusDiv.classList.add('text-red-400');
+                statusCard.classList.add('seizure-alert', 'bg-red-900', 'border-red-500'); 
+                
+                // Trigger a visible alert modal for the caregiver on high severity
+                if (severity >= 4) {
+                    showAlert(`CRITICAL SEIZURE ALERT (Severity ${severity})! Action: ${recommendation}`);
+                }
+
+            } else if (detected && severity < 3) {
+                 // Low/Suspected Alert: Yellow/Warning
+                statusDiv.classList.add('text-yellow-400');
+                statusDiv.textContent = "SUSPICIOUS ACTIVITY";
+                statusCard.classList.add('bg-yellow-900', 'border-yellow-500');
+
+            } else {
+                // Normal Status
+                statusDiv.classList.add('text-green-400');
+                statusCard.classList.add('bg-gray-700', 'border-green-500');
+            }
+            
+            // --- 3. MOCKING VITAL DATA ---
+            // Since the current FastAPI endpoint only returns prediction, 
+            // we have to mock the vitals for visual consistency.
+            document.getElementById('pulse-display').textContent = `${(severity * 5) + 70} bpm`;
+            document.getElementById('accel-display').textContent = `${(severity * 0.5) + 0.1} g`;
+            document.getElementById('pulse-std').textContent = `${(severity * 1.5).toFixed(1)}`;
+            document.getElementById('patient-last-log').textContent = new Date().toLocaleTimeString();
+        }
+
+
+        // --- FULL HISTORY LOGIC (Placeholder: Requires new FastAPI endpoint) ---
+        async function fetchFullHistory() {
+            // NOTE: You must create a new FastAPI endpoint (e.g., /full_history) that 
+            // reads ALL saved history log items from RTDB and returns them as a list.
+            console.warn("Full history fetch attempted. You need a dedicated FastAPI endpoint for this!");
+            return [
+                { latest_time_ms: Date.now() - 50000, location_name: "Living Room", is_critical: true, pulse_rate: 135, total_accel_mag: 4.8, seizure_posture: "Tonic-Clonic", spo2_value: 92 },
+                { latest_time_ms: Date.now() - 3600000, location_name: "Bedroom", is_critical: false, pulse_rate: 72, total_accel_mag: 0.2, seizure_posture: "Resting", spo2_value: 98 },
+                // ... more mock data for rendering ...
+            ];
+        }
+        
+        // ... (renderHistoryTable, groupLogsByDate, showFullHistory functions remain the same as your original code) ...
+        
+        async function showFullHistory() {
+            showHistoryModal();
+            document.getElementById('historyLoading').style.display = 'block';
+            document.getElementById('historyTableContainer').innerHTML = '<p id="historyLoading" class="text-center text-lg text-yellow-400 mt-10">Fetching history...</p>';
+
+            const historyData = await fetchFullHistory();
+            if(historyData.length > 0) {
+                 renderHistoryTable(historyData);
+            } else {
+                 document.getElementById('historyLoading').textContent = "No historical records found (or API needs implementation).";
+            }
+           
+        }
+        
+        // Helper function copied from your original submission to make the history table work:
+        function groupLogsByDate(logs) {
+            const grouped = {};
+            logs.sort((a, b) => b.latest_time_ms - a.latest_time_ms); 
+            logs.forEach(log => {
+                const dateStr = new Date(log.latest_time_ms).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                if (!grouped[dateStr]) { grouped[dateStr] = []; }
+                grouped[dateStr].push(log);
+            });
+            return grouped;
+        }
+
+        function renderHistoryTable(data) {
+            const container = document.getElementById('historyTableContainer');
+            document.getElementById('historyLoading').style.display = 'none';
+            
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-center text-lg text-gray-500 mt-10">No historical records found.</p>';
+                return;
+            }
+
+            const groupedLogs = groupLogsByDate(data);
+            let tableHTML = `
+                <table class="min-w-full divide-y divide-gray-700 rounded-lg overflow-hidden">
+                    <thead class="bg-gray-700 sticky top-0">
+                        <tr>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Time (Local)</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Location</th>
+                            <th class="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">HR/SpO₂</th>
+                            <th class="px-3 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Accel Mag</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Posture</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-gray-800 divide-y divide-gray-700">
+            `;
+            
+            for (const dateStr of Object.keys(groupedLogs)) {
+                tableHTML += `<tr class="bg-indigo-900/50"><td colspan="6" class="px-3 py-2 text-lg font-bold text-indigo-300">${dateStr}</td></tr>`;
+
+                groupedLogs[dateStr].forEach(log => {
+                    const timeStr = new Date(log.latest_time_ms).toLocaleTimeString(); 
+                    const statusColor = log.is_critical ? 'bg-red-900 text-red-300' : 'text-green-500';
+                    
+                    tableHTML += `
+                        <tr class="hover:bg-gray-700">
+                            <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-300">${timeStr}</td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm text-white font-medium">${log.location_name}</td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm text-center">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">
+                                    ${log.is_critical ? 'CRITICAL' : 'NORMAL'}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm text-center text-white">${log.pulse_rate} / ${log.spo2_value}%</td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm text-center text-white">${log.total_accel_mag.toFixed(2)}</td>
+                            <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-400">${log.seizure_posture}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            tableHTML += '</tbody></table>';
+            container.innerHTML = tableHTML;
+        }
+
+
+    </script>
+</body>
+</html>

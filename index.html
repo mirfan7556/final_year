@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Fits-Care Pro | Multi-Stakeholder Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        :root { --glass: rgba(15, 23, 42, 0.85); --border: rgba(51, 65, 85, 0.4); --accent: #10b981; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #020617; color: #f8fafc; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 260px; background: #0f172a; border-right: 1px solid var(--border); display: flex; flex-direction: column; transition: all 0.3s ease; }
+        .content-main { flex: 1; overflow-y: auto; background: radial-gradient(circle at top right, #1e293b, #020617); }
+        .glass-panel { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 1.5rem; }
+        #map { height: 450px; width: 100%; border-radius: 1.25rem; z-index: 10; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; margin: 4px 12px; border-radius: 12px; color: #94a3b8; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
+        .nav-item.active { background: #10b98120; color: #10b981; border-left: 4px solid #10b981; }
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+        .emergency-active { animation: emergency-glow 2s infinite; border-color: #ef4444 !important; }
+        @keyframes emergency-glow { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 50% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .sparkline-canvas { width: 100%; height: 50px; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="p-8">
+            <div class="flex items-center gap-3 mb-2">
+                <div class="bg-emerald-400 p-2 rounded-xl text-slate-950 shadow-lg shadow-emerald-400/20"><i data-lucide="activity"></i></div>
+                <h1 class="text-lg font-black tracking-tighter uppercase">AI FITS-CARE</h1>
+            </div>
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest ml-1">PRO MONITORING</p>
+        </div>
+
+        <nav class="flex-1">
+            <div class="nav-item active" onclick="switchView('master', this)"><i data-lucide="layout-dashboard"></i> Master Monitor</div>
+            <div class="nav-item" onclick="switchView('parent', this)"><i data-lucide="home"></i> Parent View</div>
+            <div class="nav-item" onclick="switchView('doctor', this)"><i data-lucide="stethoscope"></i> Doctor Portal</div>
+            <div class="nav-item" onclick="switchView('ambulance', this)"><i data-lucide="ambulance"></i> EMS Dispatch</div>
+        </nav>
+    </aside>
+
+    <main class="content-main">
+        <header class="h-20 border-b border-slate-800/50 bg-slate-950/20 backdrop-blur-xl flex items-center justify-between px-10 sticky top-0 z-[100]">
+            <div class="flex items-center gap-4">
+                <h2 id="viewTitle" class="font-bold text-slate-200">MASTER MONITOR</h2>
+                <div class="h-4 w-px bg-slate-800"></div>
+                <p id="systemTime" class="text-xs font-mono text-slate-400">--:--:--</p>
+            </div>
+            <div id="connectionStatus" class="flex items-center gap-3 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl text-[10px] font-black tracking-widest uppercase">
+                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> DISCONNECTED
+            </div>
+        </header>
+
+        <div class="p-8">
+            <section id="view-master" class="view-section active space-y-8">
+                <div id="statusHUD" class="glass-panel p-10 transition-all duration-700 relative overflow-hidden group">
+                    <div class="flex justify-between items-center relative z-20">
+                        <div class="flex items-center gap-8">
+                            <div id="statusIcon" class="p-6 rounded-[2rem] bg-slate-800 text-slate-500"><i data-lucide="shield-check" class="w-10 h-10"></i></div>
+                            <div>
+                                <p class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-1">Diagnosis</p>
+                                <h2 id="patientStatus" class="text-5xl font-black italic tracking-tighter uppercase">Awaiting Link...</h2>
+                            </div>
+                        </div>
+                        <div id="sosAction" class="hidden bg-red-600 px-8 py-4 rounded-2xl text-white font-black animate-bounce"><i data-lucide="phone-call" class="inline mr-2"></i> HELP DISPATCHED</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="glass-panel p-6">
+                        <p class="text-[10px] font-black text-slate-500 uppercase mb-4">Cardiac Activity</p>
+                        <h3 id="hrVal" class="text-5xl font-black mb-4 text-emerald-400">--</h3>
+                        <canvas id="hrChartMaster" class="sparkline-canvas"></canvas>
+                    </div>
+                    <div class="glass-panel p-6">
+                        <p class="text-[10px] font-black text-slate-500 uppercase mb-4">Motion Intensity</p>
+                        <h3 id="accVal" class="text-5xl font-black mb-2">--</h3>
+                        <p class="text-[10px] text-slate-500 uppercase font-bold">Protocol: <span class="text-blue-400 italic">1D-CNN Active</span></p>
+                    </div>
+                    <div class="glass-panel p-6 h-48 flex flex-col">
+                        <p class="text-[10px] font-black text-slate-500 uppercase mb-4">System Log</p>
+                        <div id="eventLog" class="flex-1 overflow-y-auto space-y-2 text-[9px] font-mono text-slate-500"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-parent" class="view-section space-y-8">
+                <div class="grid grid-cols-2 gap-8">
+                    <div class="glass-panel p-10 bg-emerald-500/5">
+                        <h3 class="text-3xl font-black text-emerald-400 italic uppercase">Parent Hub</h3>
+                        <p class="text-slate-400 mt-4 leading-relaxed italic">Resting heart rate is stable (72-78 BPM). Any irregular motion will trigger an 'Unstable' warning.</p>
+                        <div class="mt-10 p-10 glass-panel text-center">
+                            <p class="text-xs font-black text-slate-500 uppercase mb-2 tracking-widest">Real-time Heart Rate</p>
+                            <div id="hrValParent" class="text-8xl font-black text-emerald-400">--</div>
+                            <p class="text-sm text-slate-500 mt-4 font-bold tracking-[0.3em] uppercase">Beats Per Minute</p>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-4"><div id="map"></div></div>
+                </div>
+            </section>
+
+            <section id="view-doctor" class="view-section space-y-8">
+                <div class="glass-panel p-8">
+                    <div class="flex justify-between items-center mb-10">
+                        <h3 class="text-3xl font-black tracking-tight text-white uppercase italic">Clinical Dashboard</h3>
+                        <button class="bg-emerald-500 text-slate-950 px-6 py-2 rounded-xl font-bold text-xs uppercase">Export Report</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-6">
+                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Patient Name</p><p class="text-xl font-bold">Mohamed Nowfal</p></div>
+                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Target Range</p><p class="text-xl font-bold text-emerald-400">72-78 BPM</p></div>
+                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Stability Index</p><p class="text-xl font-bold">High</p></div>
+                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Algorithm</p><p class="text-xl font-bold">Fusion Logic</p></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-ambulance" class="view-section space-y-8">
+                <div class="glass-panel p-20 text-center">
+                    <div class="bg-red-500/10 text-red-500 border border-red-500/20 px-6 py-2 rounded-full inline-block mb-6 font-black text-xs uppercase tracking-widest italic">Awaiting Critical Signal</div>
+                    <h3 class="text-6xl font-black text-white italic tracking-tighter uppercase mb-6">Dispatch Portal</h3>
+                    <p class="text-slate-500 max-w-2xl mx-auto leading-relaxed italic">GPS-locked radius dispatch will activate upon SEIZURE DETECTION. Currently monitoring patient coordinates in background.</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const BROKER = "wss://broker.hivemq.com:8884/mqtt"; 
+        const TOPIC = "aifitscare/p001/vitals";
+        const client = mqtt.connect(BROKER);
+        const hrHistory = new Array(40).fill(72);
+        let map, marker, radius;
+
+        function switchView(id, el) {
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('view-' + id).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('viewTitle').innerText = id.toUpperCase() + ' MONITOR';
+            if (map) setTimeout(() => map.invalidateSize(), 200);
+        }
+
+        client.on('connect', () => {
+            const badge = document.getElementById('connectionStatus');
+            badge.className = "flex items-center gap-3 px-4 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-2xl text-[10px] font-black tracking-widest uppercase";
+            badge.innerHTML = `<div class="w-2 h-2 rounded-full bg-emerald-500"></div> CLOUD ACTIVE`;
+            client.subscribe(TOPIC);
+        });
+
+        client.on('message', (t, m) => {
+            try {
+                const data = JSON.parse(m.toString());
+                updateUI(data);
+            } catch (e) { console.error("Parse error"); }
+        });
+
+        function updateUI(data) {
+            document.getElementById('hrVal').innerText = data.hr;
+            if(document.getElementById('hrValParent')) document.getElementById('hrValParent').innerText = data.hr;
+            document.getElementById('accVal').innerText = Number(data.acc).toFixed(2);
+            
+            hrHistory.push(data.hr); hrHistory.shift();
+            drawSparkline();
+
+            const card = document.getElementById('statusCard');
+            const label = document.getElementById('patientStatus');
+            const sos = document.getElementById('sosAction');
+            const hud = document.getElementById('statusHUD');
+
+            if (data.status === "SEIZURE DETECTED") {
+                hud.className = "glass-panel p-10 transition-all duration-700 relative overflow-hidden emergency-active";
+                label.innerText = "SEIZURE DETECTED";
+                label.className = "text-5xl font-black italic tracking-tighter uppercase text-red-500";
+                sos.classList.remove('hidden');
+            } else if (data.status === "UNSTABLE") {
+                hud.className = "glass-panel p-10 transition-all duration-700 relative overflow-hidden border-amber-500 bg-amber-900/20";
+                label.innerText = "UNSTABLE MOTION";
+                label.className = "text-5xl font-black italic tracking-tighter uppercase text-amber-500";
+                sos.classList.add('hidden');
+            } else {
+                hud.className = "glass-panel p-10 transition-all duration-700 relative overflow-hidden group";
+                label.innerText = "PATIENT NORMAL";
+                label.className = "text-5xl font-black italic tracking-tighter uppercase text-emerald-400";
+                sos.classList.add('hidden');
+            }
+        }
+
+        function drawSparkline() {
+            const canvas = document.getElementById('hrChartMaster');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.parentElement.offsetWidth;
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            ctx.beginPath(); ctx.strokeStyle = '#10b981'; ctx.lineWidth = 2;
+            const step = canvas.width / (hrHistory.length - 1);
+            for(let i=0; i<hrHistory.length; i++) {
+                const x = i * step; const y = canvas.height - ((hrHistory[i]-60)/100 * canvas.height);
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            }
+            ctx.stroke();
+        }
+
+        window.onload = () => {
+            setInterval(() => document.getElementById('systemTime').innerText = new Date().toLocaleTimeString(), 1000);
+            map = L.map('map', { zoomControl: false }).setView([12.9716, 80.2452], 14);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+            marker = L.marker([12.9716, 80.2452]).addTo(map);
+            lucide.createIcons();
+        }
+    </script>
+</body>
+</html>
