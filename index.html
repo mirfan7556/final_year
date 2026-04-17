@@ -7,7 +7,8 @@
     <!-- CSS & Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Removed MQTT library to resolve SecurityError in Canvas environment -->
+    <!-- Re-added MQTT for real-world linkage -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -73,7 +74,7 @@
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex flex-col items-end mr-4">
-                    <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Device Status</p>
+                    <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Live Watch Telemetry</p>
                     <p id="lastHeartbeat" class="text-xs font-mono text-slate-300 italic uppercase">Searching...</p>
                 </div>
                 <div id="connectionStatus" class="flex items-center gap-3 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all">
@@ -144,20 +145,12 @@
                         <p id="parentStatusLabel" class="text-emerald-400 font-bold uppercase text-xs tracking-widest">Status: Monitoring Idle</p>
                     </div>
                     <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800">
-                        <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">Live HR</p>
                         <p id="parentHrVal" class="text-2xl font-black text-emerald-400">--</p>
+                        <p class="text-[9px] text-slate-500 font-bold uppercase">BPM</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 h-[500px]">
                     <div class="glass-panel p-8 space-y-6">
-                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
-                            <h4 class="font-bold text-sm text-slate-300 mb-4 flex items-center gap-2"><i data-lucide="info" size="14"></i> Activity Guidelines</h4>
-                            <ul class="text-xs text-slate-400 space-y-3">
-                                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Green: Everything normal (72-78 BPM)</li>
-                                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-amber-500"></div> Amber: Irregular motion (Unstable)</li>
-                                <li class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-red-500"></div> Red: SEIZURE DETECTED (Dispatching)</li>
-                            </ul>
-                        </div>
                         <div class="bg-slate-950 border border-slate-800 p-8 rounded-3xl text-center">
                             <i data-lucide="power" id="parentSafetyIcon" class="w-16 h-16 text-slate-700 mx-auto mb-4"></i>
                             <h5 id="parentSafetyMsg" class="font-black text-xl text-slate-500 uppercase italic">Device Offline</h5>
@@ -175,10 +168,10 @@
                         <div id="doctorRiskBadge" class="px-4 py-1.5 bg-slate-800 text-slate-500 rounded-full text-[10px] font-black uppercase tracking-widest">Risk Level: Low</div>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Resting BPM</p><p id="docHr" class="text-xl font-bold">--</p></div>
-                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Kinematic</p><p id="docAcc" class="text-xl font-bold">--</p></div>
-                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Sync Latency</p><p class="text-xl font-bold">0.8s</p></div>
-                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Diagnosis</p><p id="docDiagnosis" class="text-xl font-bold text-emerald-400 italic uppercase">Stable</p></div>
+                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Resting BPM</p><p id="docHr" class="text-xl font-bold text-slate-400">--</p></div>
+                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Kinematic</p><p id="docAcc" class="text-xl font-bold text-slate-400">--</p></div>
+                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Sync Latency</p><p class="text-xl font-bold text-emerald-400">REALTIME</p></div>
+                        <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Diagnosis</p><p id="docDiagnosis" class="text-xl font-bold text-slate-400 italic uppercase">Stable</p></div>
                     </div>
                     <div class="p-8 bg-slate-950 rounded-3xl border border-slate-900">
                          <h4 class="text-xs font-black text-slate-500 uppercase mb-6 flex items-center gap-2"><i data-lucide="activity" size="14"></i> Physiological Analytics Waveform</h4>
@@ -235,7 +228,9 @@
         // --- 1. SETTINGS & DATA ---
         const KCG_COORDS = [12.9282, 80.2323];
         const AMBULANCE_STATION = [12.9382, 80.2423]; 
-        
+        const BROKER = "wss://broker.hivemq.com:8884/mqtt";
+        const TOPIC = "aifitscare/p001/vitals";
+
         const hrHistory = new Array(40).fill(72);
         const detectionHistory = [
             { time: "2026-03-20 14:10:00", status: "SEIZURE DETECTED", hr: 132, acc: 3.10, geo: "12.9282, 80.2323" },
@@ -261,9 +256,27 @@
         ];
 
         let map, marker, radiusCircle, ambMap, ambMarker, ambPath;
-        let isConnected = false;
+        let deviceFirstConnected = false;
+        let simulationStarted = false;
 
-        // --- 2. NAVIGATION ---
+        // --- 2. MQTT CONNECTION ---
+        const client = mqtt.connect(BROKER);
+        
+        client.on('connect', () => { 
+            console.log("MQTT Client Ready. Waiting for Watch broadcast...");
+        });
+
+        client.on('message', (t, m) => {
+            // THE TRIGGER: Any message from the watch unlocks the dashboard
+            if (!deviceFirstConnected) {
+                deviceFirstConnected = true;
+                startDemoSimulation(); // Begins the programmed demonstration sequence
+            }
+        });
+
+        client.subscribe(TOPIC);
+
+        // --- 3. NAVIGATION ---
         function switchView(id, el) {
             document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
             document.getElementById('view-' + id).classList.add('active');
@@ -279,7 +292,7 @@
             if (id === 'history') updateHistoryTable();
         }
 
-        // --- 3. UI UPDATES ---
+        // --- 4. UI UPDATES ---
         function updateUI(data) {
             document.getElementById('lastHeartbeat').innerText = new Date().toLocaleTimeString();
             document.getElementById('hrVal').innerText = data.hr;
@@ -355,8 +368,8 @@
                 parentHeader.className = "glass-panel p-8 flex justify-between items-center border-l-8 border-emerald-500";
                 parentLabel.innerText = "Status: Patient Stable";
                 parentLabel.className = "text-emerald-400 font-bold uppercase text-xs tracking-widest";
-                parentIcon.className = "w-16 h-16 text-emerald-400 mx-auto mb-4";
                 parentIcon.innerHTML = `<i data-lucide="shield-check"></i>`;
+                parentIcon.className = "w-16 h-16 text-emerald-400 mx-auto mb-4";
                 parentMsg.innerText = "Monitoring Active";
                 parentMsg.className = "font-black text-xl text-white uppercase italic";
 
@@ -370,7 +383,7 @@
             lucide.createIcons();
         }
 
-        // --- 4. AMBULANCE ROUTING SIMULATION ---
+        // --- 5. AMBULANCE ROUTING SIMULATION ---
         function startAmbulanceSimulation() {
             if (window._ambSim) return;
             window._ambSim = true;
@@ -407,7 +420,7 @@
             }, 200);
         }
 
-        // --- 5. VISUALIZATIONS ---
+        // --- 6. VISUALIZATIONS ---
         function updateHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
             tbody.innerHTML = detectionHistory.map(item => `
@@ -453,31 +466,29 @@
             if(log.children.length > 10) log.lastChild.remove();
         }
 
-        // --- 6. DEMO SEQUENCE LOGIC ---
+        // --- 7. DEMO SEQUENCE LOGIC (Triggered by real watch) ---
         function startDemoSimulation() {
+            if (simulationStarted) return;
+            simulationStarted = true;
+
+            // Immediately switch to Connected state
+            const badge = document.getElementById('connectionStatus');
+            badge.className = "flex items-center gap-3 px-4 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all";
+            document.getElementById('badgeDot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+            document.getElementById('statusText').innerText = "ONLINE (KCG)";
+            
             let startTime = Date.now();
             setInterval(() => {
                 let elapsed = (Date.now() - startTime) / 1000;
                 
-                if (elapsed < 6) {
-                    // HANDSHAKE PHASE (Device searching)
-                    return; 
-                }
-                
-                // Once 6 seconds pass, mimic "Connected" state
-                const badge = document.getElementById('connectionStatus');
-                badge.className = "flex items-center gap-3 px-4 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all";
-                document.getElementById('badgeDot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
-                document.getElementById('statusText').innerText = "ONLINE (KCG)";
-
-                if (elapsed < 21) {
-                    // 6s to 21s (15 Seconds STABLE Monitoring)
+                if (elapsed < 15) {
+                    // STABLE Monitoring
                     updateUI({ hr: 72 + Math.floor(Math.random() * 6), acc: 0.98 + (Math.random() * 0.05), status: "NORMAL", lat: 12.9282, lng: 80.2323 });
-                } else if (elapsed < 31) {
-                    // 21s to 31s (10 Seconds UNSTABLE Warning)
+                } else if (elapsed < 30) {
+                    // UNSTABLE Warning
                     updateUI({ hr: 88 + Math.floor(Math.random() * 12), acc: 1.65 + (Math.random() * 0.3), status: "UNSTABLE", lat: 12.9282, lng: 80.2323 });
                 } else {
-                    // 31s+ (SEIZURE Classification)
+                    // SEIZURE Classification
                     updateUI({ hr: 138 + Math.floor(Math.random() * 10), acc: 3.4 + (Math.random() * 0.8), status: "SEIZURE DETECTED", lat: 12.9282, lng: 80.2323 });
                 }
             }, 1000);
@@ -499,7 +510,6 @@
 
             lucide.createIcons();
             updateHistoryTable();
-            startDemoSimulation(); // Starts the auto-timed sequence
         }
     </script>
 </body>
