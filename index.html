@@ -7,7 +7,7 @@
     <!-- CSS & Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <!-- Removed MQTT library to resolve SecurityError in Canvas environment -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -33,8 +33,10 @@
         td { padding: 16px; background: rgba(30, 41, 59, 0.4); border-top: 1px solid rgba(51, 65, 85, 0.3); border-bottom: 1px solid rgba(51, 65, 85, 0.3); }
         td:first-child { border-left: 1px solid rgba(51, 65, 85, 0.3); border-top-left-radius: 12px; border-bottom-left-radius: 12px; }
         td:last-child { border-right: 1px solid rgba(51, 65, 85, 0.3); border-top-right-radius: 12px; border-bottom-right-radius: 12px; }
-
         .ambulance-marker { background: #ef4444; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 15px #ef4444; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -45,7 +47,7 @@
                 <div class="bg-emerald-400 p-2 rounded-xl text-slate-950 shadow-lg shadow-emerald-400/20"><i data-lucide="activity"></i></div>
                 <h1 class="text-lg font-black tracking-tighter uppercase">AI FITS-CARE</h1>
             </div>
-            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest ml-1">PRO MONITORING</p>
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest ml-1">IOT MEDICAL SUITE</p>
         </div>
         <nav class="flex-1">
             <div class="nav-item active" onclick="switchView('master', this)"><i data-lucide="layout-dashboard"></i> Master Monitor</div>
@@ -71,16 +73,17 @@
             </div>
             <div class="flex items-center gap-6">
                 <div class="flex flex-col items-end mr-4">
-                    <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">KCG Campus Signal</p>
-                    <p id="lastHeartbeat" class="text-xs font-mono text-slate-300 italic">Connecting...</p>
+                    <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Device Status</p>
+                    <p id="lastHeartbeat" class="text-xs font-mono text-slate-300 italic uppercase">Searching...</p>
                 </div>
                 <div id="connectionStatus" class="flex items-center gap-3 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all">
-                    <div id="badgeDot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> <span id="statusText">OFFLINE</span>
+                    <div id="badgeDot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> <span id="statusText">WAITING FOR WATCH...</span>
                 </div>
             </div>
         </header>
 
-        <div class="p-8 flex-1 overflow-y-auto">
+        <div class="p-8 flex-1 overflow-y-auto custom-scrollbar">
+            <!-- MASTER VIEW -->
             <section id="view-master" class="view-section active space-y-8">
                 <div id="statusHUD" class="glass-panel p-10 transition-all duration-700 relative overflow-hidden group">
                     <div class="flex justify-between items-center relative z-20">
@@ -88,7 +91,7 @@
                             <div id="statusIcon" class="p-6 rounded-[2rem] bg-slate-800 text-slate-500 transition-colors"><i data-lucide="shield-check" class="w-10 h-10"></i></div>
                             <div>
                                 <p class="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-1">Live Clinical Diagnosis</p>
-                                <h2 id="patientStatus" class="text-5xl font-black italic tracking-tighter uppercase text-slate-700">Linking...</h2>
+                                <h2 id="patientStatus" class="text-5xl font-black italic tracking-tighter uppercase text-slate-700">Awaiting Signal...</h2>
                             </div>
                         </div>
                         <div id="sosAction" class="hidden bg-red-600 px-8 py-4 rounded-2xl text-white font-black animate-bounce shadow-xl shadow-red-600/30"><i data-lucide="phone-call" class="inline mr-2"></i> HELP DISPATCHED</div>
@@ -106,12 +109,13 @@
                         <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Campus Node: <span class="text-blue-400 italic">KCG College</span></p>
                     </div>
                     <div class="glass-panel p-6 h-48 flex flex-col">
-                        <p class="text-[10px] font-black text-slate-500 uppercase mb-4">Real-time Stream Log</p>
-                        <div id="eventLog" class="flex-1 overflow-y-auto space-y-2 text-[9px] font-mono text-slate-500 italic">Handshaking...</div>
+                        <p class="text-[10px] font-black text-slate-500 uppercase mb-4">Live Activity Stream</p>
+                        <div id="eventLog" class="flex-1 overflow-y-auto space-y-2 text-[9px] font-mono text-slate-500 italic uppercase custom-scrollbar">Turn on device to begin monitoring...</div>
                     </div>
                 </div>
             </section>
 
+            <!-- HISTORY VIEW -->
             <section id="view-history" class="view-section space-y-8">
                 <div class="flex justify-between items-center">
                     <div>
@@ -124,14 +128,7 @@
                     <div class="overflow-x-auto">
                         <table>
                             <thead>
-                                <tr>
-                                    <th>Timestamp</th>
-                                    <th>Classification</th>
-                                    <th>Vitals (BPM)</th>
-                                    <th>Motion (G)</th>
-                                    <th>GPS Lock</th>
-                                    <th>Dispatch Status</th>
-                                </tr>
+                                <tr><th>Timestamp</th><th>Classification</th><th>Vitals (BPM)</th><th>Motion (G)</th><th>GPS Lock</th><th>Status</th></tr>
                             </thead>
                             <tbody id="historyTableBody"></tbody>
                         </table>
@@ -139,17 +136,16 @@
                 </div>
             </section>
 
+            <!-- PARENT HUB -->
             <section id="view-parent" class="view-section space-y-8">
                 <div id="parentHeader" class="glass-panel p-8 flex justify-between items-center border-l-8 border-emerald-500 transition-all duration-500">
                     <div>
                         <h3 class="text-3xl font-black text-white italic uppercase tracking-tighter">Parent Safety Hub</h3>
-                        <p id="parentStatusLabel" class="text-emerald-400 font-bold uppercase text-xs tracking-widest">Status: Patient Stable</p>
+                        <p id="parentStatusLabel" class="text-emerald-400 font-bold uppercase text-xs tracking-widest">Status: Monitoring Idle</p>
                     </div>
-                    <div class="flex gap-4">
-                        <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800 text-center">
-                            <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">HR Window</p>
-                            <p id="parentHrVal" class="text-2xl font-black text-emerald-400">--</p>
-                        </div>
+                    <div class="p-4 bg-slate-900 rounded-2xl border border-slate-800">
+                        <p class="text-[9px] text-slate-500 font-bold uppercase mb-1">Live HR</p>
+                        <p id="parentHrVal" class="text-2xl font-black text-emerald-400">--</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 h-[500px]">
@@ -163,20 +159,20 @@
                             </ul>
                         </div>
                         <div class="bg-slate-950 border border-slate-800 p-8 rounded-3xl text-center">
-                            <i data-lucide="shield-check" id="parentSafetyIcon" class="w-16 h-16 text-emerald-400 mx-auto mb-4"></i>
-                            <h5 id="parentSafetyMsg" class="font-black text-xl text-white uppercase italic">Monitoring Active</h5>
-                            <p class="text-slate-500 text-xs mt-2">Continuous IoMT sync with KCG Campus.</p>
+                            <i data-lucide="power" id="parentSafetyIcon" class="w-16 h-16 text-slate-700 mx-auto mb-4"></i>
+                            <h5 id="parentSafetyMsg" class="font-black text-xl text-slate-500 uppercase italic">Device Offline</h5>
                         </div>
                     </div>
                     <div class="glass-panel p-4 overflow-hidden"><div id="map"></div></div>
                 </div>
             </section>
 
+            <!-- DOCTOR HUB -->
             <section id="view-doctor" class="view-section space-y-8">
                 <div class="glass-panel p-8">
                     <div class="flex justify-between items-center mb-10">
                         <h3 class="text-3xl font-black tracking-tight text-white uppercase italic">Clinical Dashboard</h3>
-                        <div id="doctorRiskBadge" class="px-4 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full text-[10px] font-black uppercase tracking-widest">Risk Level: Low</div>
+                        <div id="doctorRiskBadge" class="px-4 py-1.5 bg-slate-800 text-slate-500 rounded-full text-[10px] font-black uppercase tracking-widest">Risk Level: Low</div>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
                         <div class="bg-slate-900/50 p-6 rounded-2xl border border-slate-800"><p class="text-[10px] font-black text-slate-500 uppercase mb-1">Resting BPM</p><p id="docHr" class="text-xl font-bold">--</p></div>
@@ -191,6 +187,7 @@
                 </div>
             </section>
 
+            <!-- EMS DISPATCH -->
             <section id="view-ambulance" class="view-section space-y-8">
                 <div class="glass-panel p-8 h-[600px] flex flex-col">
                     <div class="flex justify-between items-center mb-6 shrink-0">
@@ -200,6 +197,7 @@
                         </div>
                         <div id="dispatchStatusBadge" class="bg-slate-800 px-6 py-2 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Awaiting Priority Signal</div>
                     </div>
+                    
                     <div class="flex-1 grid grid-cols-3 gap-6">
                         <div class="col-span-2 relative glass-panel p-2 overflow-hidden border-2 border-slate-800">
                             <div id="ambulanceMap" class="w-full h-full rounded-xl"></div>
@@ -220,7 +218,7 @@
                                 <p class="text-sm font-bold text-white">KCG College Main Gate</p>
                                 <p class="text-[10px] font-mono text-emerald-400 mt-1">12.9282, 80.2323</p>
                             </div>
-                            <div id="ambulanceActivityBox" class="bg-slate-950 p-6 rounded-2xl border border-slate-900 h-full overflow-y-auto">
+                            <div id="ambulanceActivityBox" class="bg-slate-950 p-6 rounded-2xl border border-slate-900 h-full overflow-y-auto custom-scrollbar">
                                 <p class="text-[10px] font-black text-slate-500 uppercase mb-4">Response Timeline</p>
                                 <div id="dispatchTimeline" class="space-y-4 text-[10px] font-mono text-slate-500 italic">
                                     System Standby...
@@ -234,38 +232,36 @@
     </main>
 
     <script>
-        // --- 1. SETTINGS & COORDINATES ---
+        // --- 1. SETTINGS & DATA ---
         const KCG_COORDS = [12.9282, 80.2323];
         const AMBULANCE_STATION = [12.9382, 80.2423]; 
         
         const hrHistory = new Array(40).fill(72);
         const detectionHistory = [
-            // 20 SETS OF HISTORY DATA
-            { time: "2026-03-25 10:12:00", status: "SEIZURE DETECTED", hr: 142, acc: 3.10, geo: "12.9282, 80.2323" },
-            { time: "2026-03-26 23:45:12", status: "UNSTABLE", hr: 98, acc: 1.88, geo: "12.9200, 80.2310" },
-            { time: "2026-03-28 14:22:10", status: "SEIZURE DETECTED", hr: 138, acc: 3.42, geo: "12.9282, 80.2323" },
-            { time: "2026-03-30 08:05:59", status: "UNSTABLE", hr: 91, acc: 1.65, geo: "12.9310, 80.2400" },
-            { time: "2026-04-01 19:30:44", status: "SEIZURE DETECTED", hr: 145, acc: 4.02, geo: "12.9282, 80.2323" },
-            { time: "2026-04-02 02:15:33", status: "UNSTABLE", hr: 89, acc: 1.70, geo: "12.9282, 80.2323" },
-            { time: "2026-04-03 11:20:00", status: "SEIZURE DETECTED", hr: 140, acc: 3.55, geo: "12.9282, 80.2323" },
-            { time: "2026-04-05 22:10:05", status: "UNSTABLE", hr: 94, acc: 1.95, geo: "12.9250, 80.2350" },
-            { time: "2026-04-07 15:44:12", status: "SEIZURE DETECTED", hr: 148, acc: 3.88, geo: "12.9282, 80.2323" },
-            { time: "2026-04-08 09:12:08", status: "UNSTABLE", hr: 92, acc: 1.61, geo: "12.9282, 80.2323" },
-            { time: "2026-04-09 20:30:15", status: "SEIZURE DETECTED", hr: 139, acc: 3.22, geo: "12.9282, 80.2323" },
-            { time: "2026-04-10 12:00:45", status: "UNSTABLE", hr: 96, acc: 1.80, geo: "12.9300, 80.2300" },
-            { time: "2026-04-11 03:15:59", status: "SEIZURE DETECTED", hr: 144, acc: 3.77, geo: "12.9282, 80.2323" },
-            { time: "2026-04-12 18:45:22", status: "UNSTABLE", hr: 90, acc: 1.68, geo: "12.9282, 80.2323" },
-            { time: "2026-04-13 14:10:10", status: "SEIZURE DETECTED", hr: 141, acc: 3.45, geo: "12.9282, 80.2323" },
-            { time: "2026-04-14 01:22:33", status: "UNSTABLE", hr: 93, acc: 1.85, geo: "12.9282, 80.2323" },
-            { time: "2026-04-14 03:12:08", status: "UNSTABLE", hr: 95, acc: 1.91, geo: "12.9282, 80.2323" },
-            { time: "2026-04-15 10:45:00", status: "SEIZURE DETECTED", hr: 146, acc: 3.99, geo: "12.9282, 80.2323" },
+            { time: "2026-03-20 14:10:00", status: "SEIZURE DETECTED", hr: 132, acc: 3.10, geo: "12.9282, 80.2323" },
+            { time: "2026-03-21 23:45:12", status: "UNSTABLE", hr: 98, acc: 1.88, geo: "12.9200, 80.2310" },
+            { time: "2026-03-23 14:22:10", status: "SEIZURE DETECTED", hr: 138, acc: 3.42, geo: "12.9282, 80.2323" },
+            { time: "2026-03-24 08:05:59", status: "UNSTABLE", hr: 91, acc: 1.65, geo: "12.9310, 80.2400" },
+            { time: "2026-03-25 19:30:44", status: "SEIZURE DETECTED", hr: 145, acc: 4.02, geo: "12.9282, 80.2323" },
+            { time: "2026-03-26 02:15:33", status: "UNSTABLE", hr: 89, acc: 1.70, geo: "12.9282, 80.2323" },
+            { time: "2026-03-28 11:20:00", status: "SEIZURE DETECTED", hr: 140, acc: 3.55, geo: "12.9282, 80.2323" },
+            { time: "2026-03-29 22:10:05", status: "UNSTABLE", hr: 94, acc: 1.95, geo: "12.9250, 80.2350" },
+            { time: "2026-04-01 15:44:12", status: "SEIZURE DETECTED", hr: 148, acc: 3.88, geo: "12.9282, 80.2323" },
+            { time: "2026-04-02 09:12:08", status: "UNSTABLE", hr: 92, acc: 1.61, geo: "12.9282, 80.2323" },
+            { time: "2026-04-04 20:30:15", status: "SEIZURE DETECTED", hr: 139, acc: 3.22, geo: "12.9282, 80.2323" },
+            { time: "2026-04-05 12:00:45", status: "UNSTABLE", hr: 96, acc: 1.80, geo: "12.9300, 80.2300" },
+            { time: "2026-04-07 03:15:59", status: "SEIZURE DETECTED", hr: 144, acc: 3.77, geo: "12.9282, 80.2323" },
+            { time: "2026-04-08 18:45:22", status: "UNSTABLE", hr: 90, acc: 1.68, geo: "12.9282, 80.2323" },
+            { time: "2026-04-10 14:10:10", status: "SEIZURE DETECTED", hr: 141, acc: 3.45, geo: "12.9282, 80.2323" },
+            { time: "2026-04-11 01:22:33", status: "UNSTABLE", hr: 93, acc: 1.85, geo: "12.9282, 80.2323" },
+            { time: "2026-04-12 03:12:08", status: "UNSTABLE", hr: 95, acc: 1.91, geo: "12.9282, 80.2323" },
+            { time: "2026-04-14 10:45:00", status: "SEIZURE DETECTED", hr: 146, acc: 3.99, geo: "12.9282, 80.2323" },
             { time: "2026-04-15 21:30:12", status: "UNSTABLE", hr: 97, acc: 1.77, geo: "12.9282, 80.2323" },
             { time: "2026-04-16 08:15:45", status: "SEIZURE DETECTED", hr: 143, acc: 3.60, geo: "12.9282, 80.2323" }
         ];
 
-        let map, marker, radiusCircle;
-        let ambMap, ambMarker, ambPath, ambTarget;
-        let simulationRunning = false;
+        let map, marker, radiusCircle, ambMap, ambMarker, ambPath;
+        let isConnected = false;
 
         // --- 2. NAVIGATION ---
         function switchView(id, el) {
@@ -297,18 +293,9 @@
             drawSparkline('hrChartMaster', '#10b981');
             drawSparkline('hrChartDoctor', data.status === 'NORMAL' ? '#10b981' : (data.status === 'UNSTABLE' ? '#f59e0b' : '#ef4444'), true);
 
-            const hud = document.getElementById('statusHUD');
-            const label = document.getElementById('patientStatus');
-            const sos = document.getElementById('sosAction');
-            const icon = document.getElementById('statusIcon');
-            
-            const parentHeader = document.getElementById('parentHeader');
-            const parentLabel = document.getElementById('parentStatusLabel');
-            const parentIcon = document.getElementById('parentSafetyIcon');
-            const parentMsg = document.getElementById('parentSafetyMsg');
-            
-            const docBadge = document.getElementById('doctorRiskBadge');
-            const docDiag = document.getElementById('docDiagnosis');
+            const hud = document.getElementById('statusHUD'), label = document.getElementById('patientStatus'), sos = document.getElementById('sosAction'), icon = document.getElementById('statusIcon');
+            const parentHeader = document.getElementById('parentHeader'), parentLabel = document.getElementById('parentStatusLabel'), parentIcon = document.getElementById('parentSafetyIcon'), parentMsg = document.getElementById('parentSafetyMsg');
+            const docBadge = document.getElementById('doctorRiskBadge'), docDiag = document.getElementById('docDiagnosis');
 
             if (data.status === "SEIZURE DETECTED") {
                 hud.className = "glass-panel p-10 transition-all duration-700 relative overflow-hidden emergency-active";
@@ -331,7 +318,7 @@
                 docDiag.innerText = "Seizure (Ictal)";
                 docDiag.className = "text-xl font-bold text-red-500 italic uppercase";
 
-                addLogEntry("CRITICAL", "GTCS Seizure classification confirmed.");
+                addLogEntry("CRITICAL", "GTCS classification confirmed.");
                 startAmbulanceSimulation();
 
             } else if (data.status === "UNSTABLE") {
@@ -355,7 +342,7 @@
                 docDiag.innerText = "Unstable Movement";
                 docDiag.className = "text-xl font-bold text-amber-500 italic uppercase";
 
-                addLogEntry("WARNING", "Irregular tremor pattern identified.");
+                addLogEntry("WARNING", "Irregular tremor identified.");
 
             } else {
                 hud.className = "glass-panel p-10 transition-all duration-700 relative overflow-hidden group";
@@ -368,8 +355,8 @@
                 parentHeader.className = "glass-panel p-8 flex justify-between items-center border-l-8 border-emerald-500";
                 parentLabel.innerText = "Status: Patient Stable";
                 parentLabel.className = "text-emerald-400 font-bold uppercase text-xs tracking-widest";
-                parentIcon.innerHTML = `<i data-lucide="shield-check"></i>`;
                 parentIcon.className = "w-16 h-16 text-emerald-400 mx-auto mb-4";
+                parentIcon.innerHTML = `<i data-lucide="shield-check"></i>`;
                 parentMsg.innerText = "Monitoring Active";
                 parentMsg.className = "font-black text-xl text-white uppercase italic";
 
@@ -385,8 +372,8 @@
 
         // --- 4. AMBULANCE ROUTING SIMULATION ---
         function startAmbulanceSimulation() {
-            if (simulationRunning) return;
-            simulationRunning = true;
+            if (window._ambSim) return;
+            window._ambSim = true;
 
             const badge = document.getElementById('dispatchStatusBadge');
             const hud = document.getElementById('ambulanceHUD');
@@ -397,12 +384,10 @@
             hud.classList.remove('hidden');
             
             timeline.innerHTML = `<div>[${new Date().toLocaleTimeString()}] Seizure classification confirmed.</div>`;
-            setTimeout(() => timeline.innerHTML += `<div class="text-emerald-400">[+0.8s] Haversine radius scan: Ambulance Station Karapakkam found (1.2km).</div>`, 800);
-            setTimeout(() => timeline.innerHTML += `<div class="text-white">[+1.5s] Driver TN-01 notified via SIM800L call.</div>`, 1500);
+            setTimeout(() => timeline.innerHTML += `<div class="text-emerald-400">[+0.8s] Haversine radius scan: Ambulance Station found (1.2km).</div>`, 800);
+            setTimeout(() => timeline.innerHTML += `<div class="text-white">[+1.5s] Driver TN-01 notified via call.</div>`, 1500);
 
-            let steps = 100;
-            let currentStep = 0;
-            
+            let steps = 100, currentStep = 0;
             let interval = setInterval(() => {
                 let lat = AMBULANCE_STATION[0] + (KCG_COORDS[0] - AMBULANCE_STATION[0]) * (currentStep / steps);
                 let lng = AMBULANCE_STATION[1] + (KCG_COORDS[1] - AMBULANCE_STATION[1]) * (currentStep / steps);
@@ -432,7 +417,7 @@
                     <td class="font-bold text-white">${item.hr} <span class="text-[8px] text-slate-500 font-normal">BPM</span></td>
                     <td class="font-bold text-blue-400">${item.acc} <span class="text-[8px] text-slate-500 font-normal">G</span></td>
                     <td class="font-mono text-[9px] text-slate-500">${item.geo}</td>
-                    <td class="text-[10px] font-black uppercase ${item.status === 'SEIZURE DETECTED' ? 'text-red-500' : 'text-slate-600'}">${item.status === 'SEIZURE DETECTED' ? 'SOS SENT' : 'LOGGED'}</td>
+                    <td class="text-[10px] font-black uppercase ${item.status === 'SEIZURE DETECTED' ? 'text-red-500' : 'text-slate-600'}">LOGGED</td>
                 </tr>
             `).join('');
         }
@@ -462,29 +447,37 @@
             if(!log) return;
             const div = document.createElement('div');
             div.className = "pb-1 border-b border-slate-800/50 mb-1 animate-in slide-in-from-top duration-300";
-            let colorClass = type === 'CRITICAL' ? 'text-red-500 font-bold' : (type === 'WARNING' ? 'text-amber-500' : 'text-emerald-400');
-            div.innerHTML = `<span class="opacity-30">[${new Date().toLocaleTimeString()}]</span> <span class="${colorClass}">${msg}</span>`;
+            let c = type === 'CRITICAL' ? 'text-red-500 font-bold' : (type === 'WARNING' ? 'text-amber-500' : 'text-emerald-400');
+            div.innerHTML = `<span class="opacity-30">[${new Date().toLocaleTimeString()}]</span> <span class="${c}">${msg}</span>`;
             log.prepend(div);
-            if(log.children.length > 8) log.lastChild.remove();
+            if(log.children.length > 10) log.lastChild.remove();
         }
 
+        // --- 6. DEMO SEQUENCE LOGIC ---
         function startDemoSimulation() {
             let startTime = Date.now();
             setInterval(() => {
                 let elapsed = (Date.now() - startTime) / 1000;
                 
-                if (elapsed < 6) return; 
+                if (elapsed < 6) {
+                    // HANDSHAKE PHASE (Device searching)
+                    return; 
+                }
                 
+                // Once 6 seconds pass, mimic "Connected" state
                 const badge = document.getElementById('connectionStatus');
                 badge.className = "flex items-center gap-3 px-4 py-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all";
                 document.getElementById('badgeDot').className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
                 document.getElementById('statusText').innerText = "ONLINE (KCG)";
 
-                if (elapsed < 16) {
-                    updateUI({ hr: 72 + Math.floor(Math.random() * 5), acc: 0.98 + (Math.random() * 0.05), status: "NORMAL", lat: 12.9282, lng: 80.2323 });
-                } else if (elapsed < 26) {
-                    updateUI({ hr: 88 + Math.floor(Math.random() * 10), acc: 1.65 + (Math.random() * 0.3), status: "UNSTABLE", lat: 12.9282, lng: 80.2323 });
+                if (elapsed < 21) {
+                    // 6s to 21s (15 Seconds STABLE Monitoring)
+                    updateUI({ hr: 72 + Math.floor(Math.random() * 6), acc: 0.98 + (Math.random() * 0.05), status: "NORMAL", lat: 12.9282, lng: 80.2323 });
+                } else if (elapsed < 31) {
+                    // 21s to 31s (10 Seconds UNSTABLE Warning)
+                    updateUI({ hr: 88 + Math.floor(Math.random() * 12), acc: 1.65 + (Math.random() * 0.3), status: "UNSTABLE", lat: 12.9282, lng: 80.2323 });
                 } else {
+                    // 31s+ (SEIZURE Classification)
                     updateUI({ hr: 138 + Math.floor(Math.random() * 10), acc: 3.4 + (Math.random() * 0.8), status: "SEIZURE DETECTED", lat: 12.9282, lng: 80.2323 });
                 }
             }, 1000);
@@ -493,20 +486,20 @@
         window.onload = () => {
             setInterval(() => document.getElementById('systemTime').innerText = new Date().toLocaleTimeString(), 1000);
             
+            // Map Setup
             map = L.map('map', { zoomControl: false }).setView(KCG_COORDS, 16);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
             marker = L.marker(KCG_COORDS).addTo(map);
             
             ambMap = L.map('ambulanceMap', { zoomControl: false }).setView(KCG_COORDS, 15);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(ambMap);
-            ambTarget = L.marker(KCG_COORDS).addTo(ambMap).bindPopup("Patient: KCG College").openPopup();
-            ambMarker = L.marker(AMBULANCE_STATION, {
-                icon: L.divIcon({ className: 'ambulance-marker', iconSize: [12, 12] })
-            }).addTo(ambMap);
-            ambPath = L.polyline([AMBULANCE_STATION, KCG_COORDS], {color: '#ef4444', weight: 3, dashArray: '5, 10'}).addTo(ambMap);
+            L.marker(KCG_COORDS).addTo(ambMap).bindPopup("Patient: KCG College").openPopup();
+            ambMarker = L.marker(AMBULANCE_STATION, { icon: L.divIcon({ className: 'ambulance-marker', iconSize: [12, 12] }) }).addTo(ambMap);
+            L.polyline([AMBULANCE_STATION, KCG_COORDS], {color: '#ef4444', weight: 3, dashArray: '5, 10'}).addTo(ambMap);
 
             lucide.createIcons();
-            startDemoSimulation();
+            updateHistoryTable();
+            startDemoSimulation(); // Starts the auto-timed sequence
         }
     </script>
 </body>
